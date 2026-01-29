@@ -1,19 +1,15 @@
-const { exist } = require("joi");
 const { signupSchema, signinSchema } = require("../Middlewares/validator");
 const User = require("../Models/userModel");
 const { doHash, doHashValidation } = require("../Utils/hashing");
-const { response } = require("express");
-const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { ResponseSuccess, responseError } = require("../Utils/response");
+const { INTERNAL_SERVER_ERROR, SUCCESS, NOT_FOUND } = require("../Enums/defaults");
 
 exports.signup = async (req, res) => {
     const { email, password } = req.body;
 
-    console.log(email);
-    console.log(password);
-
     try {
-        // ✅ validate correctly
+
         const { error, value } = signupSchema.validate({ email, password });
 
         if (error) {
@@ -38,7 +34,7 @@ exports.signup = async (req, res) => {
         });
 
         const result = await newUser.save();
-        result.password = undefined; // hide password in response
+        result.password = undefined;
 
         return res.status(201).json({ success: true, data: result });
 
@@ -89,3 +85,33 @@ exports.signIn = async (req, res) => {
 exports.signOut = async (req, res) => {
     res.clearCookie('Authentication').json({ success: true, message: "Logout success" })
 };
+
+exports.findAll = async (req, res) => {
+    try {
+
+        const users = await User.find();
+
+        return ResponseSuccess(res, SUCCESS, user);
+
+    } catch (error) {
+        return responseError(res, INTERNAL_SERVER_ERROR, error.message);
+    }
+};
+
+exports.findOne = async (req, res) => {
+    try {
+
+        const id = req.params.id;
+
+        const user = await User.findById({ _id: id });
+
+        if (!user) {
+            return responseError(res, NOT_FOUND, 'Not Found');
+        }
+
+        return ResponseSuccess(res, SUCCESS, user);
+
+    } catch (error) {
+        return responseError(res, INTERNAL_SERVER_ERROR, error.message);
+    }
+}
